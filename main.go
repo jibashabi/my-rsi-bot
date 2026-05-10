@@ -21,8 +21,13 @@ type OKXResponse struct {
 func main() {
 	client := resty.New()
 	var prices []float64
+	// 사용자님의 ntfy 주소
+	ntfyURL := "https://ntfy.sh/rsi111" 
 
-	fmt.Println("🚀 RSI 실시간 감시 시작 (OKX)")
+	fmt.Println("🚀 RSI 알림 봇 가동 시작 (채널: rsi111)")
+
+	// [테스트용] 봇이 실행되자마자 알림을 한 번 보냅니다.
+	client.R().SetBody("✅ RSI 알림 봇이 정상적으로 연결되었습니다! (테스트)").Post(ntfyURL)
 
 	for {
 		resp, err := client.R().Get("https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT")
@@ -33,29 +38,29 @@ func main() {
 		}
 
 		var result OKXResponse
-		if err := json.Unmarshal(resp.Body(), &result); err != nil {
-			log.Println("데이터 변환 실패:", err)
-			time.Sleep(10 * time.Second)
-			continue
-		}
+		json.Unmarshal(resp.Body(), &result)
 
 		if len(result.Data) > 0 {
 			price, _ := strconv.ParseFloat(result.Data[0].Last, 64)
 			prices = append(prices, price)
 
-			// 데이터가 14개 이상 쌓이면 RSI 계산
 			if len(prices) > 14 {
 				rsi := talib.Rsi(prices, 14)
 				currentRSI := rsi[len(rsi)-1]
-				fmt.Printf("[%s] 현재가: %.2f | RSI: %.2f\n", time.Now().Format("15:04:05"), price, currentRSI)
+				fmt.Printf("[%s] 가격: %.2f | RSI: %.2f\n", time.Now().Format("15:04:05"), price, currentRSI)
 
-				// 오래된 데이터 삭제 (메모리 관리)
+				// 실제 알림 조건
+				if currentRSI >= 70 {
+					client.R().SetBody(fmt.Sprintf("🔥 과매수! BTC RSI: %.2f", currentRSI)).Post(ntfyURL)
+				} else if currentRSI <= 30 {
+					client.R().SetBody(fmt.Sprintf("🧊 과매도! BTC RSI: %.2f", currentRSI)).Post(ntfyURL)
+				}
+				
 				prices = prices[1:]
 			} else {
-				fmt.Printf("[%s] 데이터 수집 중... (%d/15)\n", time.Now().Format("15:04:05"), len(prices))
+				fmt.Printf("데이터 수집 중... (%d/15)\n", len(prices))
 			}
 		}
-
-		time.Sleep(10 * time.Second) // 10초마다 확인
+		time.Sleep(10 * time.Second)
 	}
 }
