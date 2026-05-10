@@ -23,4 +23,8 @@ ENV TZ=Asia/Seoul
 COPY --from=builder /app/rsi-bot .
 
 RUN chmod +x rsi-bot
+
+# 아래 한 줄을 추가해 주세요!
+EXPOSE 8080
+
 CMD ["./rsi-bot"]
