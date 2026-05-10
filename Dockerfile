@@ -1,7 +1,10 @@
-FROM golang:1.22.1-alpine AS builder
+# Go 1.23.2 버전을 사용하여 빌드
+FROM golang:1.23.2-alpine AS builder
 WORKDIR /app
 COPY . .
-RUN go mod init rsi-bot && go mod tidy
+# 의존성 초기화 및 정리
+RUN go mod init rsi-bot || true
+RUN go mod tidy
 RUN go build -o rsi-bot main.go
 
 FROM alpine:latest
